@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>DEX MULTI STORE REMOTE</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    
+    body {
+        font-family: 'Share Tech Mono', 'Courier New', monospace;
+        color: #0f0; text-align: center; min-height: 100vh;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        padding: 20px; position: relative; overflow: hidden;
+        background-color: #000; /* ফলব্যাক ব্যাকগ্রাউন্ড */
+    }
+
+    /* ⭐ ব্যাকগ্রাউন্ড পিক ক্লিয়ার এবং লাইট করার জন্য আলাদা লেয়ার */
+    body::before {
+        content: "";
+        position: fixed;
+        top: -10%; left: -10%; width: 120%; height: 120%; /* ছবি একটু বড় করা হলো যাতে ফিল্টার দিলে কর্নার কাটা না পড়ে */
+        background-image: url('yeakub.jpg'); 
+        background-size: cover; background-position: center; background-repeat: no-repeat;
+        z-index: -1;
+        filter: brightness(1.5) contrast(1.2); /* ⭐ পিক লাইট এবং ক্লিয়ার করার ম্যাজিক */
+    }
+
+    /* ⭐ হ্যাকার ম্যাট্রিক্স এনিমেশনের জন্য ক্যানভাস */
+    #matrixCanvas {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        z-index: 0;
+        opacity: 0.65; 
+        pointer-events: none; 
+    }
+
+    .container { position: relative; z-index: 1; width: 100%; max-width: 360px; }
+    
+    h1 { color: #00ff88; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 10px #00ff88, 0 0 20px rgba(0,255,136,0.8), 0 0 30px #000; margin-bottom: 25px; font-size: 22px; }
+
+    #loginCard {
+        background: transparent;
+        border: none; box-shadow: none; backdrop-filter: none; padding: 0;
+    }
+
+    /* ⭐ কার্ডের ব্যাকগ্রাউন্ড সম্পূর্ণ রিমুভ করা হয়েছে */
+    .card {
+        background: transparent; 
+        padding: 10px 0; 
+        border: none;
+        box-shadow: none;
+        margin-bottom: 25px; 
+    }
+
+    /* ⭐ বাটনের ব্যাকগ্রাউন্ড রিমুভ করা হয়েছে, শুধু নিওন বর্ডার ও গ্লো থাকবে */
+    .btn {
+        display: block; padding: 16px; margin: 15px 0; border-radius: 14px; text-decoration: none; font-weight: bold; font-size: 16px;
+        cursor: pointer; width: 100%; transition: all 0.3s ease; text-transform: uppercase; font-family: 'Share Tech Mono', 'Courier New', monospace;
+        letter-spacing: 2px; background: transparent; /* ⭐ ব্যাকগ্রাউন্ড রিমুভ */
+    }
+    .btn:active { transform: scale(0.95); box-shadow: none; }
+    
+    /* বাটনের গ্লো আরও বাড়ানো হলো যাতে ব্যাকগ্রাউন্ড ছাড়াও সুন্দর দেখায় */
+    .lock { color: #ff3344; border: 1px solid rgba(255, 51, 68, 0.8); box-shadow: 0 0 20px rgba(255, 51, 68, 0.4), inset 0 0 15px rgba(255, 51, 68, 0.2); text-shadow: 0 0 10px rgba(255, 51, 68, 1); }
+    .unlock { color: #00ff66; border: 1px solid rgba(0, 255, 102, 0.8); box-shadow: 0 0 20px rgba(0, 255, 102, 0.4), inset 0 0 15px rgba(0, 255, 102, 0.2); text-shadow: 0 0 10px rgba(0, 255, 102, 1); }
+    
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .img-btn { color: #00ccff; border: 1px solid rgba(0, 204, 255, 0.8); box-shadow: 0 0 20px rgba(0, 204, 255, 0.4), inset 0 0 15px rgba(0, 204, 255, 0.2); padding: 14px; font-size: 14px; text-shadow: 0 0 10px rgba(0, 204, 255, 1); }
+    
+    /* ⭐ টেক্সটের গ্লো একটু ব্যাকগ্রাউন্ডের সাথে ম্যাচ করার জন্য */
+    .card p {
+        text-shadow: 0 0 10px #00ccff, 0 0 20px #00ccff, 0 0 2px #000;
+    }
+
+    input[type="password"] {
+        width: 100%; padding: 16px; border-radius: 0; 
+        background: transparent; border: none;
+        border-bottom: 2px solid rgba(0, 255, 136, 0.8); 
+        color: #00ff88; font-size: 18px; margin-bottom: 10px; outline: none; text-align: center;
+        font-family: 'Share Tech Mono', 'Courier New', monospace; 
+        box-shadow: none; transition: all 0.3s ease;
+        text-shadow: 0 0 8px rgba(0, 255, 136, 0.8);
+    }
+    input[type="password"]:focus { 
+        border-bottom: 2px solid #00ff88; 
+        box-shadow: 0 15px 15px -15px rgba(0, 255, 136, 1); 
+    }
+    input::placeholder { color: rgba(0, 255, 136, 0.8); font-size: 14px; text-shadow: none; }
+    
+    #controlPanel { display: none; width: 100%; }
+    .footer { position: absolute; bottom: 15px; width: 100%; text-align: center; color: #00ff88; font-size: 12px; z-index: 1; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 255, 136, 1), 0 0 3px #000; font-weight: bold; }
+</style>
+</head>
+<body>
+
+    <canvas id="matrixCanvas"></canvas>
+
+    <div class="container">
+        <h1>Secure Terminal</h1>
+
+        <div id="loginCard">
+            <p style="margin-top:0; margin-bottom:20px; color:#00ff88; font-size: 15px; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 255, 136, 1), 0 0 3px #000;">[ ENTER ACCESS CODE ]</p>
+            <input type="password" id="passwordInput" placeholder="Enter Password" oninput="autoCheckPassword()" onkeydown="handleEnter(event)">
+        </div>
+
+        <div id="controlPanel">
+            <div class="card">
+                <a href="com.yeakub.api://lock" class="btn lock">[ 🔒 LOCK PHONE ]</a>
+                <a href="com.yeakub.api://unlock" class="btn unlock">[ 🔓 UNLOCK PHONE ]</a>
+            </div>
+            <div class="card">
+                <p style="margin-top:0; margin-bottom:15px; color:#00ccff; font-size:14px; letter-spacing: 1px;">[ CHANGE WALLPAPER ]</p>
+                <div class="grid">
+                    <a href="com.yeakub.api://img1" class="btn img-btn">IMG 1</a>
+                    <a href="com.yeakub.api://img2" class="btn img-btn">IMG 2</a>
+                    <a href="com.yeakub.api://img3" class="btn img-btn">IMG 3</a>
+                    <a href="com.yeakub.api://img4" class="btn img-btn">IMG 4</a>
+                    <a href="com.yeakub.api://img5" class="btn img-btn">IMG 5</a>
+                    <a href="com.yeakub.api://img6" class="btn img-btn">IMG 6</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">SYSTEM SECURED BY DEX MULTI STORE</div>
+
+    <script>
+        const JS_PASSWORD = "admin"; 
+
+        function autoCheckPassword() {
+            var pass = document.getElementById("passwordInput").value.trim();
+            var isCorrect = false;
+
+            if (typeof Android !== 'undefined' && typeof Android.checkPassword === 'function') {
+                try {
+                    var result = Android.checkPassword(pass);
+                    if (result === "true" || result === true) {
+                        isCorrect = true;
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            } else {
+                if (pass === JS_PASSWORD) {
+                    isCorrect = true;
+                }
+            }
+
+            if (isCorrect) {
+                document.getElementById("loginCard").style.display = "none";
+                document.getElementById("controlPanel").style.display = "block";
+            }
+        }
+
+        function handleEnter(event) {
+            if (event.key === "Enter") {
+                var isCorrect = false;
+                var pass = document.getElementById("passwordInput").value.trim();
+                
+                if (typeof Android !== 'undefined' && typeof Android.checkPassword === 'function') {
+                    var result = Android.checkPassword(pass);
+                    if (result === "true" || result === true) isCorrect = true;
+                } else {
+                    if (pass === JS_PASSWORD) isCorrect = true;
+                }
+
+                if (!isCorrect) {
+                    alert("❌ ACCESS DENIED!\nWrong Password.");
+                    document.getElementById("passwordInput").value = "";
+                }
+            }
+        }
+
+        // ==========================================
+        // ⭐ হ্যাকার ম্যাট্রিক্স এনিমেশন ⭐
+        // ==========================================
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const letters = "DEX MULTI STORE"; 
+        const fontSize = 16;
+        const columns = canvas.width / fontSize;
+
+        const drops = [];
+        for (let x = 0; x < columns; x++) {
+            drops[x] = 1; 
+        }
+
+        let lastTime = 0;
+        const fps = 30; 
+        const interval = 1000 / fps;
+
+        function drawMatrix(currentTime) {
+            requestAnimationFrame(drawMatrix);
+
+            const deltaTime = currentTime - lastTime;
+            if (deltaTime < interval) return;
+            lastTime = currentTime - (deltaTime % interval);
+
+            ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "#00ff88"; 
+            ctx.font = fontSize + "px 'Share Tech Mono', monospace";
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = letters.charAt(Math.floor(Math.random() * letters.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+
+        requestAnimationFrame(drawMatrix);
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>
